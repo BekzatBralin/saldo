@@ -1,0 +1,15 @@
+# Секреты и ключи (САМОЕ ВАЖНОЕ)
+**/.env
+**/.env.local
+backend/config/config.php
+
+# Зависимости
+frontend/node_modules/
+backend/vendor/
+**/venv/
+**/__pycache__/
+
+# Логи и временные файлы
+*.log
+.DS_Store
+frontend/dist/

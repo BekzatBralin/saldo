@@ -1,0 +1,16 @@
+[Unit]
+Description=Freedom Bank PDF Parser
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/freedom_parser
+ExecStart=/root/freedom_parser/venv/bin/python parser_service.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

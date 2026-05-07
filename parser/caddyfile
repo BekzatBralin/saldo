@@ -1,0 +1,22 @@
+saldo.bralin.kz {
+    encode gzip
+
+    # Python
+    handle /api/parse/* {
+        reverse_proxy 127.0.0.1:5055
+    }
+
+    # PHP backend
+    handle /api/* {
+        root * /var/www/saldo/backend
+        php_fastcgi unix//run/php/php8.2-fpm.sock
+        rewrite * /index.php
+    }
+
+    # Vue фронт
+    handle {
+        root * /var/www/saldo/frontend
+        try_files {path} /index.html
+        file_server
+    }
+}
