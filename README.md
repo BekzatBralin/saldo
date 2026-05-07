@@ -23,16 +23,29 @@
 
 ```bash
 cd backend
-composer install
-cp .env.example .env
-# Настрой БД и API ключи в .env
 ```
+
+```bash
+composer install
+```
+
+```bash
+cp .env.example .env
+```
+
+Настрой БД и API ключи в `.env`
 
 ### 2. Frontend
 
 ```bash
 cd frontend
+```
+
+```bash
 npm install
+```
+
+```bash
 npm run dev
 ```
 
@@ -40,9 +53,21 @@ npm run dev
 
 ```bash
 cd parser
+```
+
+```bash
 python3 -m venv venv
+```
+
+```bash
 source venv/bin/activate
+```
+
+```bash
 pip install -r requirements.txt
+```
+
+```bash
 python parser_service.py
 ```
 
