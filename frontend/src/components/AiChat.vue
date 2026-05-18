@@ -102,9 +102,10 @@ function clearChat() {
 
 // Простое форматирование — переносы строк и жирный текст
 function formatMsg(text) {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
+  const div = document.createElement('div')
+  div.textContent = text
+  let escaped = div.innerHTML
+  return escaped
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br>')
 }

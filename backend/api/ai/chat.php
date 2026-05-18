@@ -17,7 +17,9 @@ $user->execute([$userId]);
 $userName = $user->fetchColumn() ?: 'пользователь';
 
 // Получаем подсказку пользователя (ai_prompt)
-$userPrompt = $db->query("SELECT ai_prompt FROM users WHERE id = $userId")->fetchColumn() ?: '';
+$promptStmt = $db->prepare('SELECT ai_prompt FROM users WHERE id = ?');
+$promptStmt->execute([$userId]);
+$userPrompt = $promptStmt->fetchColumn() ?: '';
 
 $tagBreakdown = '';
 if (!empty($context['tagBreakdown'])) {

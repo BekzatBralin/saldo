@@ -13,7 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $body   = getBody();
-    $prompt = trim($body['ai_prompt'] ?? '');
+    $promptRaw = $body['ai_prompt'] ?? '';
+    if (!is_string($promptRaw)) {
+        jsonError('Неверный формат промпта', 400);
+    }
+    $prompt = trim($promptRaw);
 
     if (mb_strlen($prompt) > 2000) {
         jsonError('Промпт слишком длинный (максимум 2000 символов)');
