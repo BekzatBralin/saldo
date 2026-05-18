@@ -16,21 +16,62 @@ $user = $db->prepare('SELECT name FROM users WHERE id = ?');
 $user->execute([$userId]);
 $userName = $user->fetchColumn() ?: 'пользователь';
 
+// Получаем подсказку пользователя (ai_prompt)
+$userPrompt = $db->query("SELECT ai_prompt FROM users WHERE id = $userId")->fetchColumn() ?: '';
+
+$tagBreakdown = '';
+if (!empty($context['tagBreakdown'])) {
+    foreach ($context['tagBreakdown'] as $tag) {
+        $tagBreakdown .= "  - {$tag['name']}: " . number_format($tag['total'], 0, '.', ' ') . " ₸\n";
+    }
+}
+
+$incomeBreakdown = '';
+if (!empty($context['incomeBreakdown'])) {
+    foreach ($context['incomeBreakdown'] as $tag) {
+        $incomeBreakdown .= "  - {$tag['name']}: " . number_format($tag['total'], 0, '.', ' ') . " ₸\n";
+    }
+}
+
+$recent = '';
+if (!empty($context['recentTransactions'])) {
+    foreach ($context['recentTransactions'] as $tx) {
+        $sign = $tx['amount'] >= 0 ? '+' : '';
+        $recent .= "  {$tx['date']}: {$sign}{$tx['amount']} ₸ | {$tx['type']} | {$tx['detail']} | Тег: {$tx['tag_name']}\n";
+    }
+}
+
+$allTags = !empty($context['allTags']) ? implode(', ', $context['allTags']) : 'не указаны';
+
 // Системный промт с контекстом аккаунта
 $systemPrompt = <<<PROMPT
-Ты финансовый помощник в приложении Kaspi App для {$userName}.
-
+Ты финансовый помощник в приложении Saldo для {$userName}.
 Приложение отслеживает транзакции из банковских выписок (Kaspi Gold, Freedom Finance).
 
-Текущий контекст аккаунта:
-- Баланс: {$context['balance']} ₸
-- Доходы за период: {$context['income']} ₸  
-- Расходы за период: {$context['expense']} ₸
-- Количество транзакций: {$context['tx_count']}
+=== ТЕКУЩИЙ КОНТЕКСТ АККАУНТА ===
+Период данных: {$context['dateRange']['from']} — {$context['dateRange']['to']}
+Баланс (расчётный): {$context['balance']} ₸
+Доходы за период: {$context['income']} ₸
+Расходы за период: {$context['expense']} ₸
+Количество транзакций: {$context['tx_count']}
 
-Отвечай на русском языке. Будь конкретным и полезным. 
-Если спрашивают про транзакции — опирайся на цифры выше.
-Не придумывай данных которых у тебя нет.
+Доступные теги пользователя: {$allTags}
+
+Расходы по тегам (топ-10):
+{$tagBreakdown}
+Доходы по тегам:
+{$incomeBreakdown}
+Последние 20 транзакций:
+{$recent}
+=== ПОДСКАЗКИ ПОЛЬЗОВАТЕЛЯ ===
+{$userPrompt}
+
+Правила ответа:
+- Отвечай на русском языке
+- Будь конкретным и полезным, опирайся на цифры выше
+- Не придумывай данных которых нет в контексте
+- Суммы округляй до рублей/тенге, форматируй с пробелами (100 000 ₸)
+- Если данных мало или пользователь не загрузил выписку — скажи об этом
 PROMPT;
 
 $payload = [

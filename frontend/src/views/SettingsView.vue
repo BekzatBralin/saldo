@@ -96,7 +96,7 @@
       <div class="about-card">
         <p class="about__line">Saldo — трекер расходов по банковским выпискам</p>
         <p class="about__line muted">Kaspi Gold · Freedom Finance</p>
-        <a :href="import.meta.env.VITE_SUPPORT_BOT_URL" target="_blank" class="bug-link">
+        <a :href="supportBotUrl" target="_blank" class="bug-link">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M12 1.5L1 5.5l3.5 1.3 1.3 3.7 1.7-2.5 3 2 1.5-8.5z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
           </svg>
@@ -210,6 +210,7 @@ const aiPrompt       = ref('')
 const promptSaving   = ref(false)
 const showClearModal = ref(false)
 const logoutStep     = ref(0)
+const supportBotUrl  = import.meta.env.VITE_SUPPORT_BOT_URL ?? '#'
 
 onMounted(async () => {
   try {
@@ -253,10 +254,29 @@ async function removeTag(id) {
 }
 
 function exportJSON() {
+  // Строим map тегов id → name для быстрого поиска
+  const tagById = {}
+  store.tags.forEach(t => { tagById[t.id] = t.name })
+
   const data = {
+    version: 2,
     exportedAt: new Date().toISOString(),
-    transactions: store.transactions,
+    user: {
+      balance:         store.user?.balance         ?? 0,
+      balance_freedom: store.user?.balance_freedom ?? 0,
+      balance_other:   store.user?.balance_other   ?? 0,
+    },
     tags: store.tags,
+    transactions: store.transactions.map(tx => ({
+      hash:       tx.hash,
+      date:       tx.date,       // YYYY-MM-DD (из БД)
+      amount:     tx.amount,
+      type:       tx.type,
+      detail:     tx.detail,
+      bank:       tx.bank       ?? 'kaspi',
+      is_deposit: tx.is_deposit ?? 0,
+      _tagName:   tagById[tx.tag_id] ?? null,   // имя тега — не ID
+    })),
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url  = URL.createObjectURL(blob)
@@ -274,14 +294,50 @@ function importJSON(e) {
   reader.onload = async (ev) => {
     try {
       const data = JSON.parse(ev.target.result)
-      if (data.transactions) {
-        await store.importTransactions({
-          transactions: data.transactions,
-          bank: 'import', period: '', name: ''
-        })
-        showToast('Импортировано')
+      if (!data.transactions || !Array.isArray(data.transactions)) {
+        showToast('Ошибка: нет поля transactions')
+        return
       }
-    } catch { showToast('Ошибка: неверный формат') }
+
+      const tagById = {}
+      // Теги из файла — для обратной совместимости с v1 (где _tagName мог отсутствовать)
+      if (Array.isArray(data.tags)) {
+        data.tags.forEach(t => { tagById[t.id] = t.name })
+      }
+
+      const txForImport = data.transactions.map(tx => {
+        // Конвертируем дату YYYY-MM-DD → DD.MM.YY (backend сам обратно переконвертит)
+        let kaspiDate = tx.date ?? ''
+        if (kaspiDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const [y, m, d] = kaspiDate.split('-')
+          kaspiDate = `${d}.${m}.${y.slice(2)}`
+        }
+        // v2 имеет _tagName напрямую, v1 — ищем по tag_id
+        const tagName = tx._tagName ?? (tx.tag_id ? tagById[tx.tag_id] : null) ?? null
+        return {
+          hash:       tx.hash,
+          date:       kaspiDate,
+          amount:     tx.amount,
+          type:       tx.type   ?? '',
+          detail:     tx.detail ?? '',
+          bank:       tx.bank   ?? 'kaspi',
+          is_deposit: tx.is_deposit ?? 0,
+          _tagName:   tagName,
+        }
+      })
+
+      await store.importTransactions({
+        transactions: txForImport,
+        bank: 'import',
+        period: '',
+        name: '',
+        summary: { balanceEnd: data.user?.balance ?? null },
+      })
+      showToast(`Импортировано ${txForImport.length} операций`)
+    } catch (err) {
+      console.error(err)
+      showToast('Ошибка: неверный формат файла')
+    }
   }
   reader.readAsText(file)
   e.target.value = ''

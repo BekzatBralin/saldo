@@ -180,11 +180,54 @@ if (unique.length > 0) {
     chatMessages.value.push({ role: 'user', content })
     chatLoading.value = true
     try {
+      // Собираем расходы по тегам
+      const expenseByTag = realTransactions.value
+        .filter(tx => tx.amount < 0 && tx.tag_id)
+        .reduce((acc, tx) => {
+          const tagName = tags.value.find(t => t.id === tx.tag_id)?.name || 'Неизвестно'
+          acc[tagName] = (acc[tagName] || 0) + Math.abs(tx.amount)
+          return acc
+        }, {})
+
+      // Собираем доходы по тегам
+      const incomeByTag = realTransactions.value
+        .filter(tx => tx.amount > 0 && tx.tag_id)
+        .reduce((acc, tx) => {
+          const tagName = tags.value.find(t => t.id === tx.tag_id)?.name || 'Неизвестно'
+          acc[tagName] = (acc[tagName] || 0) + tx.amount
+          return acc
+        }, {})
+
+      // Правильный dateRange: берём min и max дату
+      const dates = transactions.value.map(tx => tx.date).filter(Boolean).sort()
+      const dateFrom = dates[0] ?? null
+      const dateTo   = dates[dates.length - 1] ?? null
+
       const context = {
         balance:  Math.round(balance.value),
         income:   Math.round(totalIncome.value),
         expense:  Math.round(totalExpense.value),
         tx_count: transactions.value.length,
+        dateRange: { from: dateFrom, to: dateTo },
+        // Топ-10 расходных тегов
+        tagBreakdown: Object.entries(expenseByTag)
+          .map(([name, total]) => ({ name, total: Math.round(total) }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 10),
+        // Доходы по тегам (зарплата, доход и т.д.)
+        incomeBreakdown: Object.entries(incomeByTag)
+          .map(([name, total]) => ({ name, total: Math.round(total) }))
+          .sort((a, b) => b.total - a.total),
+        // Все теги пользователя
+        allTags: tags.value.map(t => t.name),
+        // Последние 20 транзакций с тегами
+        recentTransactions: transactions.value.slice(0, 20).map(tx => ({
+          date:     tx.date,
+          amount:   tx.amount,
+          type:     tx.type,
+          detail:   tx.detail,
+          tag_name: tags.value.find(t => t.id === tx.tag_id)?.name || ''
+        }))
       }
       const recent = chatMessages.value.slice(-20)
       const res = await api.ai.chat(recent, context)

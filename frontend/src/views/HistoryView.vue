@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="history-root">
     <h1 class="page-title">История</h1>
 
     <div class="toolbar">
@@ -182,6 +182,7 @@ watch([search, searchAmount, activeType], resetLimit)
 </script>
 
 <style scoped>
+.history-root { display: flex; flex-direction: column; min-height: 0; }
 .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; margin-bottom: 24px; }
 
 .toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
@@ -193,19 +194,24 @@ watch([search, searchAmount, activeType], resetLimit)
 .search:focus { border-color: #e42420; }
 .search--amount { flex: 0 0 120px; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { padding: 5px 13px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
+.chip { padding: 5px 13px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; cursor: pointer; }
 .chip--active { background: #e42420; border-color: #e42420; color: #fff; }
 
 .loading-row { display: flex; align-items: center; gap: 10px; color: #888; font-size: 14px; padding: 40px 0; justify-content: center; }
 .spinner { width: 20px; height: 20px; border: 2px solid #eee; border-top-color: #e42420; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.table-wrap { background: #fff; border: 1px solid #e8e6df; border-radius: 12px; overflow-x: auto; }
+.table-wrap {
+  background: #fff; border: 1px solid #e8e6df; border-radius: 12px;
+  overflow-x: auto; overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
 .tx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tx-table th {
   background: #f7f6f2; padding: 10px 12px; text-align: left;
   font-size: 11px; font-weight: 500; color: #aaa; text-transform: uppercase;
   letter-spacing: .4px; border-bottom: 1px solid #e8e6df;
+  position: sticky; top: 0; z-index: 1;
 }
 .sortable { cursor: pointer; user-select: none; }
 .sortable:hover { color: #555; }
@@ -235,7 +241,7 @@ watch([search, searchAmount, activeType], resetLimit)
 
 .table-footer {
   display: flex; align-items: center; justify-content: space-between;
-  margin-top: 12px; padding-bottom: 80px; /* отступ от AI кнопки */
+  margin-top: 12px; padding-bottom: 24px;
 }
 .tx-count { font-size: 12px; color: #aaa; }
 .loading-more { display: flex; align-items: center; }
@@ -244,4 +250,17 @@ watch([search, searchAmount, activeType], resetLimit)
 .sentinel { height: 1px; }
 
 .empty { text-align: center; color: #bbb; padding: 64px 0; font-size: 14px; }
+
+@media (max-width: 680px) {
+  .page-title { font-size: 18px; margin-bottom: 16px; }
+  .search-row { flex-direction: column; }
+  .search--amount { flex: 1; }
+  .tx-table { font-size: 12px; min-width: 480px; }
+  .tx-table th, .tx-table td { padding: 8px 6px; }
+  .td-detail { max-width: 100px; }
+  /* Дополнительный отступ снизу чтобы последняя строка таблицы
+     не перекрывалась нижним меню (60px) + AI кнопка (52px) + зазор */
+  .table-footer { padding-bottom: 8px; }
+  .sentinel { height: 120px; } /* sentinel-запас для bottom nav */
+}
 </style>

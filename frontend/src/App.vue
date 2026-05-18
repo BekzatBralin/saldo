@@ -214,6 +214,7 @@ input, select, textarea { font-family: inherit; }
 @media (max-width: 680px) {
   .sidebar { display: none; }
   .bottom-nav { display: flex; }
-  .content { padding: 20px 16px 90px; }
+  /* 60px нижнее меню + 64px AI кнопка + 20px запас */
+  .content { padding: 20px 16px 144px; }
 }
 </style>

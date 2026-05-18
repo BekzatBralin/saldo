@@ -25,9 +25,9 @@ foreach ($merchantStmt->fetchAll() as $row) {
     $merchantCache[mb_strtolower($row['name'])] = $row['tag_id'];
 }
 
-// Системные теги для autoTag
+// Все теги юзера (системные и кастомные) для autoTag и восстановления из JSON
 $tagStmt = $db->prepare(
-    'SELECT id, name FROM tags WHERE user_id = ? AND is_system = 1'
+    'SELECT id, name FROM tags WHERE user_id = ?'
 );
 $tagStmt->execute([$userId]);
 $systemTags = [];
@@ -100,11 +100,15 @@ jsonResponse([
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function kaspiDateToSql(string $date): string {
+    // YYYY-MM-DD (уже в нужном формате, например при импорте JSON)
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return $date;
+    }
     // DD.MM.YY → YYYY-MM-DD
     if (preg_match('/^(\d{2})\.(\d{2})\.(\d{2})$/', $date, $m)) {
         return "20{$m[3]}-{$m[2]}-{$m[1]}";
     }
-    return $date; // уже в нужном формате
+    return $date;
 }
 
 function isDepositTx(array $tx): bool {
@@ -117,15 +121,22 @@ function resolveTag(array $tx, array &$cache, array $systemTags): ?int {
     $type   = $tx['type'] ?? '';
     $amount = (float) ($tx['amount'] ?? 0);
 
+    // Восстановление тега из JSON импорта
+    if (!empty($tx['_tagName']) && isset($systemTags[$tx['_tagName']])) {
+        return $systemTags[$tx['_tagName']];
+    }
+
     // Сначала смотрим кэш мерчантов
     if (isset($cache[$detail])) return $cache[$detail] ?: null;
 
     // Автотег по ключевым словам
     $tag = null;
 
-if ($amount > 0 && str_contains($detail, 'зарплата'))          $tag = 'Зарплата';
+if ($amount > 0 && (str_contains($detail, 'зарплата') || str_contains($detail, 'зп') || str_contains($detail, 'salary') || str_contains($detail, 'аванс'))) $tag = 'Зарплата';
+elseif (str_contains($detail, 'кредит') || str_contains($detail, 'рассрочк') || str_contains($detail, 'погашен')) $tag = 'Кредит';
+elseif (str_contains($detail, 'glovo') || str_contains($detail, 'wolt') || str_contains($detail, 'яндекс еда') || str_contains($detail, 'chocofood')) $tag = 'Еда';
 elseif (str_contains($detail, 'аптек') || str_contains($detail, 'pharm') || str_contains($detail, 'фарм')) $tag = 'Здоровье';
-elseif (str_contains($detail, 'qr') || str_contains($detail, 'onay') || str_contains($detail, 'транспорт')) $tag = 'Транспорт';
+elseif (str_contains($detail, 'qr') || str_contains($detail, 'onay') || str_contains($detail, 'транспорт') || str_contains($detail, 'такси') || str_contains($detail, 'yandex go')) $tag = 'Транспорт';
 elseif (str_contains($detail, 'телеком') || str_contains($detail, 'tele2') || str_contains($detail, 'алсеко') || str_contains($detail, 'квитанц')) $tag = 'Коммуналка';
 elseif (str_contains($detail, 'депозит'))                       $tag = 'Депозит';
 elseif ($type === 'Покупка')                                    $tag = 'Покупки';
