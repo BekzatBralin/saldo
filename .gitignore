@@ -1,10 +1,8 @@
 
 **/.env
 **/.env.local
-backend/config/config.php
 
 frontend/node_modules/
-backend/vendor/
 **/venv/
 **/__pycache__/
 
